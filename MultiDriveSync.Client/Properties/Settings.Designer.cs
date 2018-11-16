@@ -25,12 +25,12 @@ namespace MultiDriveSync.Client.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        public global::System.Collections.Specialized.StringCollection Users {
+        public global::System.Collections.Specialized.StringCollection Sessions {
             get {
-                return ((global::System.Collections.Specialized.StringCollection)(this["Users"]));
+                return ((global::System.Collections.Specialized.StringCollection)(this["Sessions"]));
             }
             set {
-                this["Users"] = value;
+                this["Sessions"] = value;
             }
         }
     }

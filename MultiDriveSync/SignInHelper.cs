@@ -16,7 +16,7 @@ namespace MultiDriveSync
 {
     public static class SignInHelper
     {
-        public static async Task<(string email, string userId)> SignInAsync(ClientInfo clientInfo)
+        public static async Task<Session> SignInAsync(ClientInfo clientInfo)
         {
             var clientSecrets = new ClientSecrets
             {
@@ -37,7 +37,16 @@ namespace MultiDriveSync
 
             var userInfo = await oauthService.Userinfo.Get().ExecuteAsync();
 
-            return (userInfo.Email, credentials.UserId);
+            return new Session
+            {
+                UserInfo = new UserInfo
+                {
+                    Email = userInfo.Email,
+                    Name = userInfo.Name,
+                    UserId = credentials.UserId
+                },
+                ClientInfo = clientInfo
+            };
         }
     }
 }

@@ -1,40 +1,39 @@
-﻿using MultiDriveSync.Client.Helpers;
-using MultiDriveSync.Models;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using MultiDriveSync.Client.Helpers;
+using MultiDriveSync.Client.Views;
+using MultiDriveSync.Models;
+using Prism.Commands;
+using Prism.Mvvm;
 
-namespace MultiDriveSync.Client
+namespace MultiDriveSync.Client.ViewModels
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window
+    public class MainWindowViewModel : BindableBase
     {
-        public MainWindow()
+        public ObservableCollection<Session> Sessions { get; set; } = new ObservableCollection<Session>();
+
+        public DelegateCommand AddCommand { get; }
+
+        public DelegateCommand InitializeViewModelCommand { get; set; }
+
+        public MainWindowViewModel()
         {
-            InitializeComponent();
+            AddCommand = new DelegateCommand(() =>
+            {
+                var dialog = new AddDialogWindow();
+                dialog.ShowDialog();
+            });
+            InitializeViewModelCommand = new DelegateCommand(async () => await OnInitializedAsync());
         }
 
-        protected override async void OnInitialized(EventArgs e)
+        async Task OnInitializedAsync()
         {
-            base.OnInitialized(e);
-
             var clientInfo = new ClientInfo
             {
-                ClientId = AppSettings.ClientId,
-                ClientSecret = AppSettings.ClientSecret,
+                ClientName = "default",
+                ClientId = AppSettings.DefaultClientId,
+                ClientSecret = AppSettings.DefaultClientSecret,
                 AppName = AppSettings.AppName
             };
 
@@ -42,6 +41,10 @@ namespace MultiDriveSync.Client
             {
                 userId = await SignInAsync(clientInfo);
             }
+
+            var users = AppSettings.GetSessions();
+            if (users.Any())
+                users.ToList().ForEach(x => Sessions.Add(x));
 
             var multiDriveSync = new MultiDriveSyncService(settings =>
             {
@@ -73,10 +76,11 @@ namespace MultiDriveSync.Client
 
         private async Task<string> SignInAsync(ClientInfo clientInfo)
         {
-            var (email, userId) = await SignInHelper.SignInAsync(clientInfo);
-            AppSettings.AddUser(email, userId);
+            var session = await SignInHelper.SignInAsync(clientInfo);
 
-            return userId;
+            AppSettings.AddSession(session);
+
+            return session.UserInfo.UserId;
         }
     }
 }

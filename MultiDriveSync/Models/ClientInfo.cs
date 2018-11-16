@@ -6,6 +6,7 @@ namespace MultiDriveSync.Models
 {
     public class ClientInfo
     {
+        public string ClientName { get; set; }
         public string ClientId { get; set; }
         public string ClientSecret { get; set; }
         public string AppName { get; set; }

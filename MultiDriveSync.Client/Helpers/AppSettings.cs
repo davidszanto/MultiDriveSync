@@ -1,65 +1,66 @@
 ﻿using MultiDriveSync.Client.Properties;
-using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MultiDriveSync.Models;
 
 namespace MultiDriveSync.Client.Helpers
 {
-    class AppSettings
+    public class AppSettings
     {
         private const string CLIENT_ID = "clientId";
         private const string CLIENT_SECRET = "clientSecret";
-
+        
         public static string AppName { get; } = "MultiDriveSync";
-        public static string ClientId { get; } = ConfigurationManager.AppSettings[CLIENT_ID];
-        public static string ClientSecret { get; } = ConfigurationManager.AppSettings[CLIENT_SECRET];
+        public static string DefaultClientId { get; } = ConfigurationManager.AppSettings[CLIENT_ID];
+        public static string DefaultClientSecret { get; } = ConfigurationManager.AppSettings[CLIENT_SECRET];
 
-        public static void AddUser(string email, string userId)
+        public static void AddSession(Session session)
         {
-            if (Settings.Default.Users is null)
-            {
-                Settings.Default.Users = new StringCollection();
-            }
+            if (Settings.Default.Sessions is null)
+                Settings.Default.Sessions = new StringCollection();
 
-            Settings.Default.Users.Add($"{email};{userId}");
+            Settings.Default.Sessions.Add($"{session.UserInfo.Email};{session.UserInfo.UserId};{session.UserInfo.Name};{session.ClientInfo.ClientId};{session.ClientInfo.ClientSecret}");
             Settings.Default.Save();
         }
 
-        public static IEnumerable<string> GetUserEmails()
+        public static IEnumerable<Session> GetSessions()
         {
-            if (Settings.Default.Users is null)
+            if (Settings.Default.Sessions is null)
             {
                 yield break;
             }
 
-            foreach (var user in Settings.Default.Users)
+            foreach (var user in Settings.Default.Sessions)
             {
-                if (TryDeserializeUser(user, out var userInfo))
+                if (TryDeserializeSession(user, out var userInfo))
                 {
-                    yield return userInfo.Email;
+                    yield return userInfo;
                 }
             }
         }
 
+        public static IEnumerable<string> GetUserEmails()
+        {
+            return GetSessions().Select(x => x.UserInfo.Email);
+        }
+
         public static bool TryGetUserId(string userEmail, out string userId)
         {
-            if (Settings.Default.Users is null)
+            if (Settings.Default.Sessions is null)
             {
                 userId = string.Empty;
                 return false;
             }
 
-            foreach (var user in Settings.Default.Users)
+            foreach (var session in Settings.Default.Sessions)
             {
-                if (TryDeserializeUser(user, out var userInfo))
+                if (TryDeserializeSession(session, out var sessionInfo))
                 {
-                    if (userInfo.Email == userEmail)
+                    if (sessionInfo.UserInfo.Email == userEmail)
                     {
-                        userId = userInfo.UserId;
+                        userId = sessionInfo.UserInfo.UserId;
                         return true;
                     }
                 }
@@ -69,27 +70,35 @@ namespace MultiDriveSync.Client.Helpers
             return false;
         }
 
-        private static bool TryDeserializeUser(string user, out UserInfo userInfo)
+        private static bool TryDeserializeSession(string sessionString, out Session session)
         {
-            if (!string.IsNullOrEmpty(user))
+            if (!string.IsNullOrEmpty(sessionString))
             {
-                var userInfoParts = user.Split(';');
+                var sessionInfoParts = sessionString.Split(';');
 
-                if (userInfoParts.Length == 2)
+                if (sessionInfoParts.Length == 5)
                 {
-                    userInfo = new UserInfo { Email = userInfoParts[0], UserId = userInfoParts[1] };
+
+                    session = new Session
+                    {
+                        UserInfo = new UserInfo
+                        {
+                            Email = sessionInfoParts[0],
+                            UserId = sessionInfoParts[1],
+                            Name = sessionInfoParts[2]
+                        },
+                        ClientInfo = new ClientInfo
+                        {
+                            ClientId = sessionInfoParts[3],
+                            ClientSecret = sessionInfoParts[4]
+                        }
+                    };
                     return true;
                 }
             }
 
-            userInfo = null;
+            session = null;
             return false;
-        }
-
-        private class UserInfo
-        {
-            public string Email { get; set; }
-            public string UserId { get; set; }
         }
     }
 }
