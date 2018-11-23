@@ -6,7 +6,10 @@ namespace MultiDriveSync.Models
 {
     public class Session
     {
-        public ClientInfo ClientInfo { get; set; }
+        public UserInfo StorageAccountInfo { get; set; }
         public UserInfo UserInfo { get; set; }
+        public string LocalRoot { get; set; }
+        public string RemoteRoot { get; set; }
+        public EditAccessMode EditAccessMode { get; set; }
     }
 }

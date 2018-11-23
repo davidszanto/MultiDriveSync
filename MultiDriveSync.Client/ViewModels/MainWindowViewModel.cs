@@ -11,14 +11,18 @@ namespace MultiDriveSync.Client.ViewModels
 {
     public class MainWindowViewModel : BindableBase
     {
+        private AppSettings _appSettings;
+
         public ObservableCollection<Session> Sessions { get; set; } = new ObservableCollection<Session>();
 
         public DelegateCommand AddCommand { get; }
 
         public DelegateCommand InitializeViewModelCommand { get; set; }
 
-        public MainWindowViewModel()
+        public MainWindowViewModel(AppSettings appSettings)
         {
+            _appSettings = appSettings;
+
             AddCommand = new DelegateCommand(() =>
             {
                 var dialog = new AddDialogWindow();
@@ -29,42 +33,42 @@ namespace MultiDriveSync.Client.ViewModels
 
         async Task OnInitializedAsync()
         {
-            var clientInfo = new ClientInfo
-            {
-                ClientName = "default",
-                ClientId = AppSettings.DefaultClientId,
-                ClientSecret = AppSettings.DefaultClientSecret,
-                AppName = AppSettings.AppName
-            };
+            //var clientInfo = new ClientInfo
+            //{
+            //    ClientName = "default",
+            //    ClientId = _appSettings.ClientId,
+            //    ClientSecret = _appSettings.ClientSecret,
+            //    AppName = _appSettings.AppName
+            //};
 
-            if (!TryGetFirstUserId(clientInfo, out var userId))
-            {
-                userId = await SignInAsync(clientInfo);
-            }
+            //if (!TryGetFirstUserId(clientInfo, out var userId))
+            //{
+            //    userId = await SignInAsync(clientInfo);
+            //}
 
-            var users = AppSettings.GetSessions();
-            if (users.Any())
-                users.ToList().ForEach(x => Sessions.Add(x));
+            //var users = _appSettings.GetSessions();
+            //if (users.Any())
+            //    users.ToList().ForEach(x => Sessions.Add(x));
 
-            var multiDriveSync = new MultiDriveSyncService(settings =>
-            {
-                settings.StorageAccountId = "";
-                settings.UserAccountId = userId;
-                settings.StorageRootPath = "";
-                settings.LocalRootPath = "";
-                settings.EditingAccessLevel = EditAccessMode.OwnedOnly;
-                settings.ClientInfo = clientInfo;
-            });
+            //var multiDriveSync = new MultiDriveSyncService(settings =>
+            //{
+            //    settings.StorageAccountId = "";
+            //    settings.UserAccountId = userId;
+            //    settings.StorageRootPath = "";
+            //    settings.LocalRootPath = "";
+            //    settings.EditAccessMode = EditAccessMode.OwnedOnly;
+            //    settings.ClientInfo = clientInfo;
+            //});
 
-            var fileNames = await multiDriveSync.ListFilesAsync();
+            //var fileNames = await multiDriveSync.ListFilesAsync();
         }
 
         private bool TryGetFirstUserId(ClientInfo clientInfo, out string userId)
         {
-            var email = AppSettings.GetUserEmails().FirstOrDefault();
+            var email = _appSettings.GetUserEmails().FirstOrDefault();
             if (!string.IsNullOrEmpty(email))
             {
-                if (AppSettings.TryGetUserId(email, out userId))
+                if (_appSettings.TryGetUserId(email, out userId))
                 {
                     return true;
                 }
@@ -74,13 +78,13 @@ namespace MultiDriveSync.Client.ViewModels
             return false;
         }
 
-        private async Task<string> SignInAsync(ClientInfo clientInfo)
-        {
-            var session = await SignInHelper.SignInAsync(clientInfo);
+        //private async Task<string> SignInAsync(ClientInfo clientInfo)
+        //{
+        //    var session = await SignInHelper.SignInAsync(clientInfo);
 
-            AppSettings.AddSession(session);
+        //    _appSettings.AddSession(session);
 
-            return session.UserInfo.UserId;
-        }
+        //    return session.UserInfo.UserId;
+        //}
     }
 }

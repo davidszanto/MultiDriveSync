@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using MultiDriveSync.Client.Helpers;
 using MultiDriveSync.Client.Views;
 using Prism.Ioc;
 using Prism.Ninject;
@@ -23,7 +24,7 @@ namespace MultiDriveSync.Client
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
-
+            containerRegistry.RegisterSingleton<AppSettings>();
         }
     }
 }

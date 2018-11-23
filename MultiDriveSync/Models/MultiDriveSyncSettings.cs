@@ -10,7 +10,7 @@ namespace MultiDriveSync.Models
         public string UserAccountId { get; set; }
         public string StorageRootPath { get; set; }
         public string LocalRootPath { get; set; }
-        public EditAccessMode EditingAccessLevel { get; set; }
+        public EditAccessMode EditAccessMode { get; set; }
         public ClientInfo ClientInfo { get; set; }
     }
 }

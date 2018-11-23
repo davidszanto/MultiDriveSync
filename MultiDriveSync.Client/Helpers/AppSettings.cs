@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Configuration;
 using System.Linq;
 using MultiDriveSync.Models;
+using Newtonsoft.Json;
 
 namespace MultiDriveSync.Client.Helpers
 {
@@ -11,21 +12,32 @@ namespace MultiDriveSync.Client.Helpers
     {
         private const string CLIENT_ID = "clientId";
         private const string CLIENT_SECRET = "clientSecret";
-        
-        public static string AppName { get; } = "MultiDriveSync";
-        public static string DefaultClientId { get; } = ConfigurationManager.AppSettings[CLIENT_ID];
-        public static string DefaultClientSecret { get; } = ConfigurationManager.AppSettings[CLIENT_SECRET];
+        private const string APP_NAME = "MultiDriveSync";
 
-        public static void AddSession(Session session)
+        public ClientInfo ClientInfo { get; }
+
+        public AppSettings()
+        {
+            ClientInfo = new ClientInfo
+            {
+                AppName = APP_NAME,
+                ClientName = APP_NAME,
+                ClientId = ConfigurationManager.AppSettings[CLIENT_ID],
+                ClientSecret = ConfigurationManager.AppSettings[CLIENT_SECRET]
+            };
+        }
+
+        public void AddSession(Session session)
         {
             if (Settings.Default.Sessions is null)
                 Settings.Default.Sessions = new StringCollection();
 
-            Settings.Default.Sessions.Add($"{session.UserInfo.Email};{session.UserInfo.UserId};{session.UserInfo.Name};{session.ClientInfo.ClientId};{session.ClientInfo.ClientSecret}");
+            var json = JsonConvert.SerializeObject(session);
+            Settings.Default.Sessions.Add(json);
             Settings.Default.Save();
         }
 
-        public static IEnumerable<Session> GetSessions()
+        public IEnumerable<Session> GetSessions()
         {
             if (Settings.Default.Sessions is null)
             {
@@ -41,12 +53,12 @@ namespace MultiDriveSync.Client.Helpers
             }
         }
 
-        public static IEnumerable<string> GetUserEmails()
+        public IEnumerable<string> GetUserEmails()
         {
             return GetSessions().Select(x => x.UserInfo.Email);
         }
 
-        public static bool TryGetUserId(string userEmail, out string userId)
+        public bool TryGetUserId(string userEmail, out string userId)
         {
             if (Settings.Default.Sessions is null)
             {
@@ -70,35 +82,18 @@ namespace MultiDriveSync.Client.Helpers
             return false;
         }
 
-        private static bool TryDeserializeSession(string sessionString, out Session session)
+        private bool TryDeserializeSession(string sessionString, out Session session)
         {
-            if (!string.IsNullOrEmpty(sessionString))
+            try
             {
-                var sessionInfoParts = sessionString.Split(';');
-
-                if (sessionInfoParts.Length == 5)
-                {
-
-                    session = new Session
-                    {
-                        UserInfo = new UserInfo
-                        {
-                            Email = sessionInfoParts[0],
-                            UserId = sessionInfoParts[1],
-                            Name = sessionInfoParts[2]
-                        },
-                        ClientInfo = new ClientInfo
-                        {
-                            ClientId = sessionInfoParts[3],
-                            ClientSecret = sessionInfoParts[4]
-                        }
-                    };
-                    return true;
-                }
+                session = JsonConvert.DeserializeObject<Session>(sessionString);
+                return true;
             }
-
-            session = null;
-            return false;
+            catch (JsonException)
+            {
+                session = null;
+                return false;
+            }
         }
     }
 }
