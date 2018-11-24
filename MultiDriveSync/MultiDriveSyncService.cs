@@ -16,24 +16,22 @@ namespace MultiDriveSync
 {
     public class MultiDriveSyncService : IMultiDriveSync
     {
+        private readonly IGoogleDriveClient googleDriveClient;
         private readonly LocalFileSynchronizer localFileSynchronizer;
         private readonly RemoteFileSynchronizer remoteFileSynchronizer;
-        private readonly Lazy<UserCredential> credential;
+        private readonly UserCredential credential;
 
         public MultiDriveSyncSettings Settings { get; }
 
-        public MultiDriveSyncService(MultiDriveSyncSettings settings)
+        public MultiDriveSyncService(Action<MultiDriveSyncSettings> configure)
         {
-            Settings = settings ?? throw new ArgumentNullException(nameof(settings));
-
-            localFileSynchronizer = new LocalFileSynchronizer();
-            remoteFileSynchronizer = new RemoteFileSynchronizer();
-            credential = new Lazy<UserCredential>(() => GetStoredCredentialAsync(Settings.UserAccountId, Settings.ClientInfo).Result);
-        }
-
-        public MultiDriveSyncService(Action<MultiDriveSyncSettings> configure) : this(new MultiDriveSyncSettings())
-        {
+            Settings = new MultiDriveSyncSettings();
             configure(Settings);
+
+            credential = GetStoredCredential(Settings.UserAccountId, Settings.ClientInfo);
+            googleDriveClient = new GoogleDriveClient(credential, Settings.ClientInfo.AppName);
+            localFileSynchronizer = new LocalFileSynchronizer();
+            remoteFileSynchronizer = new RemoteFileSynchronizer(googleDriveClient, Settings.LocalRootPath);
         }
 
         public async Task RunAsync(CancellationToken cancellationToken)
@@ -42,19 +40,7 @@ namespace MultiDriveSync
             await remoteFileSynchronizer.RunSynchronization(cancellationToken);
         }
 
-        public async Task<List<string>> ListFilesAsync()
-        {
-            var driveService = new DriveService(new BaseClientService.Initializer
-            {
-                HttpClientInitializer = credential.Value,
-                ApplicationName = Settings.ClientInfo.AppName
-            });
-
-            var files = await driveService.Files.List().ExecuteAsync();
-            return files.Files.Select(file => file.Name).ToList();
-        }
-
-        private async Task<UserCredential> GetStoredCredentialAsync(string userId, ClientInfo clientInfo)
+        private UserCredential GetStoredCredential(string userId, ClientInfo clientInfo)
         {
             var dataStore = new FileDataStore(clientInfo.AppName);
 
@@ -70,7 +56,7 @@ namespace MultiDriveSync
                 DataStore = dataStore
             });
 
-            var token = await dataStore.GetAsync<TokenResponse>(userId);
+            var token = dataStore.GetAsync<TokenResponse>(userId).Result;
 
             return new UserCredential(flow, userId, token);
         }

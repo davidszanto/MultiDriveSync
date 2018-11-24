@@ -15,10 +15,9 @@ namespace MultiDriveSync.Client.ViewModels
         private readonly MultiDriveClientsService _multiDriveClientsService;
 
         public ObservableCollection<Session> Sessions { get; set; } = new ObservableCollection<Session>();
-
         public DelegateCommand AddCommand { get; }
-
         public DelegateCommand InitializeViewModelCommand { get; set; }
+        public DelegateCommand OnClosingCommand { get; }
 
         public MainWindowViewModel(AppSettings appSettings, MultiDriveClientsService multiDriveClientsService)
         {
@@ -30,13 +29,13 @@ namespace MultiDriveSync.Client.ViewModels
                 var dialog = new AddDialogWindow();
                 dialog.ShowDialog();
             });
+
             InitializeViewModelCommand = new DelegateCommand(() => OnInitialized());
+            OnClosingCommand = new DelegateCommand(() => _multiDriveClientsService.StopAll());
         }
 
         private void OnInitialized()
         {
-            var sessions = _appSettings.GetSessions().ToList();
-
             foreach (var session in _appSettings.GetSessions())
             {
                 _multiDriveClientsService.Start(session);
