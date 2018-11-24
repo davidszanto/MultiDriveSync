@@ -7,7 +7,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Util.Store;
-using MultiDriveSync.Client.Helpers;
+using MultiDriveSync.Client.Services;
 using MultiDriveSync.Client.Views;
 using MultiDriveSync.Models;
 using Prism.Commands;
@@ -18,7 +18,8 @@ namespace MultiDriveSync.Client.ViewModels
 {
     public class AddDialogWindowViewModel : BindableBase
     {
-        private AppSettings _appSettings;
+        private readonly AppSettings _appSettings;
+        private readonly MultiDriveClientsService _multiDriveClientsService;
         private EditAccessMode _selectedEditAccessMode;
         private UserInfo _storageAccount;
         private UserInfo _userAccount;
@@ -45,9 +46,10 @@ namespace MultiDriveSync.Client.ViewModels
         public event EventHandler CloseWindowRequestedEvent;
 
 
-        public AddDialogWindowViewModel(AppSettings appSettings)
+        public AddDialogWindowViewModel(AppSettings appSettings, MultiDriveClientsService multiDriveClientsService)
         {
             _appSettings = appSettings;
+            _multiDriveClientsService = multiDriveClientsService;
             _selectedEditAccessMode = EditAccessMode.OwnedOnly;
 
             EditAccessModes = new List<EditAccessMode>
@@ -99,14 +101,17 @@ namespace MultiDriveSync.Client.ViewModels
 
             SaveSessionCommand = new DelegateCommand(() =>
             {
-                _appSettings.AddSession(new Session
+                var session = new Session
                 {
                     StorageAccountInfo = _storageAccount,
                     UserInfo = _userAccount,
                     LocalRoot = LocalRoot,
                     RemoteRoot = RemoteRoot,
                     EditAccessMode = SelectedEditAccessMode
-                });
+                };
+
+                _appSettings.AddSession(session);
+                _multiDriveClientsService.Start(session);
 
                 CloseWindowRequestedEvent?.Invoke(this, EventArgs.Empty);
             }, () => ValidateInputs());

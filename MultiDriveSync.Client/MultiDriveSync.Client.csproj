@@ -58,6 +58,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Services\MultiDriveClientsService.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="Views\StorageAccountFolderPicker.xaml.cs">
       <DependentUpon>StorageAccountFolderPicker.xaml</DependentUpon>
@@ -74,7 +75,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Helpers\AppSettings.cs" />
+    <Compile Include="Services\AppSettings.cs" />
     <Compile Include="ViewModels\AddDialogWindowViewModel.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
     <Compile Include="Views\AddDialogWindow.xaml.cs">

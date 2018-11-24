@@ -6,7 +6,7 @@ using System.Linq;
 using MultiDriveSync.Models;
 using Newtonsoft.Json;
 
-namespace MultiDriveSync.Client.Helpers
+namespace MultiDriveSync.Client.Services
 {
     public class AppSettings
     {

@@ -1,5 +1,4 @@
-﻿using MultiDriveSync.Client.Helpers;
-using MultiDriveSync.Models;
+﻿using MultiDriveSync.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
