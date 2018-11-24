@@ -16,5 +16,6 @@ namespace MultiDriveSync
         Task<string> GetRootIdAsync();
         Task<List<Change>> GetChildrenAsync(string parentId);
         Task<List<Folder>> GetChildrenFoldersAsync(string parentId);
+        Task<Folder> GetFoldersFromRoot(string rootId, string name);
     }
 }

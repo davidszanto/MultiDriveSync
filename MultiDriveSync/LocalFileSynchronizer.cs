@@ -10,14 +10,14 @@ namespace MultiDriveSync
     public class LocalFileSynchronizer
     {
         private readonly FileSystemWatcher watcher;
-        private GoogleDriveClient client;
+        private IGoogleDriveClient client;
 
         public LocalFileSynchronizer()
         {
             watcher = new FileSystemWatcher();
         }
 
-        public async Task StartSynchronization(MultiDriveSyncSettings settings, GoogleDriveClient driveClient)
+        public async Task StartSynchronization(MultiDriveSyncSettings settings, IGoogleDriveClient driveClient)
         {
             // TODO: inicializalni a watchert
 

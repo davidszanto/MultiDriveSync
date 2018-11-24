@@ -20,7 +20,7 @@ namespace MultiDriveSync
             parentPathsById = new Dictionary<string, string>();
         }
 
-        public async Task RunSynchronization(CancellationToken cancellationToken)
+        public async Task InitializeAsync()
         {
             var rootId = await googleDriveClient.GetRootIdAsync();
             parentPathsById[rootId] = localRootPath;
@@ -28,13 +28,16 @@ namespace MultiDriveSync
             if (!(await googleDriveClient.HasChangesTokenAsync()))
             {
                 await googleDriveClient.InitializeChangesTokenAsync();
-                await InitializeAsync(rootId);
+                await DownloadAllFilesAsync(rootId);
             }
             else
             {
                 await InitializeParentPathsByIdDictionaryAsync(rootId);
             }
+        }
 
+        public async Task RunSynchronization(CancellationToken cancellationToken)
+        {
             while (!cancellationToken.IsCancellationRequested)
             {
                 foreach (var change in await googleDriveClient.GetChangesAsync())
@@ -70,7 +73,7 @@ namespace MultiDriveSync
             }
         }
 
-        public async Task InitializeAsync(string rootId)
+        private async Task DownloadAllFilesAsync(string rootId)
         {
             var parentIdQueue = new Queue<string>();
             parentIdQueue.Enqueue(rootId);
