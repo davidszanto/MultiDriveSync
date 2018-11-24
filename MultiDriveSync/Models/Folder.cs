@@ -8,5 +8,7 @@ namespace MultiDriveSync.Models
     {
         public string Id { get; set; }
         public string Name { get; set; }
+        public string ParentId { get; set; }
+        public List<Folder> Children { get; set; }
     }
 }

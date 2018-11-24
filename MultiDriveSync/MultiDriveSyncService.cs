@@ -26,9 +26,10 @@ namespace MultiDriveSync
         {
             Settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
+            credential = new Lazy<UserCredential>(() => GetStoredCredentialAsync(Settings.UserAccountId, Settings.ClientInfo).Result);
+
             localFileSynchronizer = new LocalFileSynchronizer();
             remoteFileSynchronizer = new RemoteFileSynchronizer();
-            credential = new Lazy<UserCredential>(() => GetStoredCredentialAsync(Settings.UserAccountId, Settings.ClientInfo).Result);
         }
 
         public MultiDriveSyncService(Action<MultiDriveSyncSettings> configure) : this(new MultiDriveSyncSettings())
@@ -38,7 +39,8 @@ namespace MultiDriveSync
 
         public async Task RunAsync(CancellationToken cancellationToken)
         {
-            localFileSynchronizer.StartSynchronization();
+            var driveClient = new GoogleDriveClient(credential.Value, Settings.ClientInfo.AppName);
+            await localFileSynchronizer.StartSynchronization(Settings, driveClient);
             await remoteFileSynchronizer.RunSynchronization(cancellationToken);
         }
 

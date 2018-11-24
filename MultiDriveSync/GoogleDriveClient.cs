@@ -4,6 +4,7 @@ using MultiDriveSync.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -23,6 +24,23 @@ namespace MultiDriveSync
                 HttpClientInitializer = userCredential
             });
         }
+
+
+        private async Task<List<Folder>> GetDescendant(Folder parentFolder)
+        {
+            var children = await GetChildrenFoldersAsync(parentFolder.Id);
+
+            if (!children.Any())
+                return new List<Folder>();
+
+            foreach (var folderChild in children)
+            {
+                folderChild.Children = await GetDescendant(folderChild);
+            }
+
+            return children;
+        }
+
 
         public async Task<List<Folder>> GetChildrenFoldersAsync(string parentId)
         {
@@ -50,6 +68,7 @@ namespace MultiDriveSync
                     children.Add(new Folder
                     {
                         Id = folder.Id,
+                        ParentId = parentId,
                         Name = folder.Name
                     });
                 }
@@ -57,6 +76,19 @@ namespace MultiDriveSync
             } while (!string.IsNullOrEmpty(pageToken));
             
             return children;
+        }
+
+        public async Task<Folder> GetFoldersFromRoot(string rootId, string name)
+        {
+            var rootFolder = new Folder
+            {
+                Id = rootId,
+                ParentId = null,
+                Name = name
+            };
+
+            rootFolder.Children = await GetDescendant(rootFolder);
+            return rootFolder;
         }
     }
 }
