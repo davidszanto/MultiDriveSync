@@ -23,7 +23,7 @@ namespace MultiDriveSync.Client.Services
             var multiDriveSync = new MultiDriveSyncService(settings =>
             {
                 settings.StorageAccountId = session.StorageAccountInfo.UserId;
-                settings.UserAccountId = session.UserInfo.UserId;
+                settings.UserEmail = session.UserInfo.Email;
                 settings.StorageRootPath = session.RemoteRoot;
                 settings.LocalRootPath = session.LocalRoot;
                 settings.EditAccessMode = session.EditAccessMode;
@@ -53,7 +53,7 @@ namespace MultiDriveSync.Client.Services
         {
             var multiDriveSync = repository.FirstOrDefault(x =>
                    x.MultiDriveSyncService.Settings.StorageAccountId == session.StorageAccountInfo.UserId
-                && x.MultiDriveSyncService.Settings.UserAccountId == session.UserInfo.UserId);
+                && x.MultiDriveSyncService.Settings.UserEmail == session.UserInfo.Email);
 
             if (multiDriveSync != null)
             {

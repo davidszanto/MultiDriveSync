@@ -10,15 +10,16 @@ namespace MultiDriveSync
     internal class RemoteFileSynchronizer
     {
         private readonly IGoogleDriveClient googleDriveClient;
-        private readonly Dictionary<string, string> parentPathsById;
         private readonly string rootId;
+
+        public Dictionary<string, string> ParentPathsById { get; }
 
         public RemoteFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string rootId)
         {
             this.googleDriveClient = googleDriveClient ?? throw new ArgumentNullException(nameof(googleDriveClient));
-            parentPathsById = new Dictionary<string, string>();
+            ParentPathsById = new Dictionary<string, string>();
             this.rootId = rootId;
-            parentPathsById[rootId] = localRootPath;
+            ParentPathsById[rootId] = localRootPath;
         }
 
         public async Task InitializeAsync()
@@ -109,8 +110,8 @@ namespace MultiDriveSync
 
                 foreach (var child in await googleDriveClient.GetChildrenFoldersAsync(parentId))
                 {
-                    var fullPath = Path.Combine(parentPathsById[parentId], child.Name);
-                    parentPathsById[child.Id] = fullPath;
+                    var fullPath = Path.Combine(ParentPathsById[parentId], child.Name);
+                    ParentPathsById[child.Id] = fullPath;
                     parentIdQueue.Enqueue(child.Id);
                 }
             }
@@ -118,16 +119,16 @@ namespace MultiDriveSync
 
         private void DeleteFolder(string folderId)
         {
-            if (parentPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
+            if (ParentPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
             {
                 Directory.Delete(path, true);
-                parentPathsById.Remove(folderId);
+                ParentPathsById.Remove(folderId);
             }
         }
 
         private void DeleteFile(string parentFolderId, string fileName)
         {
-            if (parentPathsById.TryGetValue(parentFolderId, out var parentFolderPath) && Directory.Exists(parentFolderId))
+            if (ParentPathsById.TryGetValue(parentFolderId, out var parentFolderPath) && Directory.Exists(parentFolderId))
             {
                 var filePathToDelete = Path.Combine(parentFolderPath, fileName);
                 if (File.Exists(filePathToDelete))
@@ -139,28 +140,28 @@ namespace MultiDriveSync
 
         private void CreateOrUpdateFolder(string parentId, string folderId, string folderName)
         {
-            if (parentPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
+            if (ParentPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
             {
                 var directory = new DirectoryInfo(path);
                 var newPath = Path.Combine(directory.Parent.FullName, folderName);
 
                 Directory.Move(path, newPath);
-                parentPathsById[folderId] = newPath;
+                ParentPathsById[folderId] = newPath;
             }
             else
             {
-                if (parentPathsById.TryGetValue(parentId, out var parentPath) && Directory.Exists(parentPath))
+                if (ParentPathsById.TryGetValue(parentId, out var parentPath) && Directory.Exists(parentPath))
                 {
                     var newDirectoryPath = Path.Combine(parentPath, folderName);
                     Directory.CreateDirectory(newDirectoryPath);
-                    parentPathsById[folderId] = newDirectoryPath;
+                    ParentPathsById[folderId] = newDirectoryPath;
                 }
             }
         }
 
         private async Task CreateOrUpdateFile(string parentId, string fileId, string fileName)
         {
-            if (parentPathsById.TryGetValue(parentId, out var parentFolderPath) && Directory.Exists(parentFolderPath))
+            if (ParentPathsById.TryGetValue(parentId, out var parentFolderPath) && Directory.Exists(parentFolderPath))
             {
                 var filePath = Path.Combine(parentFolderPath, fileName);
                 using (var stream = File.Create(filePath))

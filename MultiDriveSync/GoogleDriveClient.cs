@@ -1,14 +1,13 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Drive.v3;
+using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using MultiDriveSync.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace MultiDriveSync
@@ -16,6 +15,7 @@ namespace MultiDriveSync
     public class GoogleDriveClient : IGoogleDriveClient
     {
         private const string CHANGES_TOKEN_KEY_TEMPLATE = "{0}_changesToken";
+        private const string OWNER_KEY = "owner";
 
         private readonly UserCredential userCredential;
         private readonly DriveService driveService;
@@ -25,7 +25,7 @@ namespace MultiDriveSync
         public GoogleDriveClient(UserCredential userCredential, string appName)
         {
             this.userCredential = userCredential;
-            driveService = new DriveService(new Google.Apis.Services.BaseClientService.Initializer
+            driveService = new DriveService(new BaseClientService.Initializer
             {
                 ApplicationName = appName,
                 HttpClientInitializer = userCredential
@@ -87,6 +87,73 @@ namespace MultiDriveSync
             await driveService.Files.Get(fileId).DownloadAsync(stream);
         }
 
+        public async Task<string> UploadFolderAsync(string name, string parentId, string ownerEmail)
+        {
+            var file = new Google.Apis.Drive.v3.Data.File
+            {
+                Name = name,
+                Parents = new List<string> { parentId },
+                Properties = new Dictionary<string, string> { [OWNER_KEY] = ownerEmail },
+                MimeType = "application/vnd.google-apps.folder"
+            };
+
+            var request = driveService.Files.Create(file);
+            request.Fields = "id";
+
+            var response = await request.ExecuteAsync();
+
+            return response.Id;
+        }
+
+        public async Task UploadFileAsync(string name, string parentId, Stream stream, string ownerEmail)
+        {
+            var file = new Google.Apis.Drive.v3.Data.File
+            {
+                Name = name,
+                Parents = new List<string> { parentId },
+                Properties = new Dictionary<string, string> { [OWNER_KEY] = ownerEmail }
+            };
+
+            await driveService.Files.Create(file, stream, "application/octet-stream").UploadAsync();
+        }
+
+        public async Task DeleteAsync(string id)
+        {
+            await driveService.Files.Delete(id).ExecuteAsync(); 
+        }
+
+        public async Task RenameAsync(string id, string newName)
+        {
+            var file = new Google.Apis.Drive.v3.Data.File
+            {
+                Name = newName
+            };
+
+            await driveService.Files.Update(file, id).ExecuteAsync(); 
+        }
+
+        public async Task UpdateFileAsync(string id, Stream stream)
+        {
+            var file = new Google.Apis.Drive.v3.Data.File();
+            await driveService.Files.Update(file, id, stream, "application/octet-stream").UploadAsync(); 
+        }
+
+        public async Task<(string id, string ownerEmail)> GetIdAsync(string parentId, string name)
+        {
+            var request = driveService.Files.List();
+            request.Q = $"'{parentId}' in parents and name = '{name}' and trashed = false";
+            request.Fields = "files(id, properties)";
+            var result = await request.ExecuteAsync();
+
+            var file = result.Files.FirstOrDefault();
+            if (file != null)
+            {
+                return (file.Id, file.Properties[OWNER_KEY]);
+            }
+
+            return (string.Empty, string.Empty);
+        }
+
         public async Task<string> GetRootIdAsync()
         {
             var response = await driveService.Files.Get("root").ExecuteAsync();
@@ -130,7 +197,9 @@ namespace MultiDriveSync
             var children = await GetChildrenFoldersAsync(parentFolder.Id);
 
             if (!children.Any())
+            {
                 return new List<Folder>();
+            }
 
             foreach (var folderChild in children)
             {

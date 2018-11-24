@@ -30,14 +30,17 @@ namespace MultiDriveSync
 
             credential = GetStoredCredential(Settings.StorageAccountId, Settings.ClientInfo);
             googleDriveClient = new GoogleDriveClient(credential, Settings.ClientInfo.AppName);
-            localFileSynchronizer = new LocalFileSynchronizer();
+            localFileSynchronizer = new LocalFileSynchronizer(googleDriveClient, Settings.LocalRootPath, Settings.UserEmail);
             remoteFileSynchronizer = new RemoteFileSynchronizer(googleDriveClient, Settings.LocalRootPath, Settings.StorageRootPath);
         }
 
         public async Task RunAsync(CancellationToken cancellationToken)
         {
             await remoteFileSynchronizer.InitializeAsync();
-            await localFileSynchronizer.StartSynchronization(Settings, googleDriveClient);
+
+            localFileSynchronizer.InitializeParentIdsAndPaths(remoteFileSynchronizer.ParentPathsById);
+            localFileSynchronizer.StartSynchronization();
+
             await remoteFileSynchronizer.RunSynchronization(cancellationToken);
         }
 
