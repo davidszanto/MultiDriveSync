@@ -16,7 +16,7 @@ namespace MultiDriveSync
 {
     public class MultiDriveSyncService : IMultiDriveSync
     {
-        private readonly IGoogleDriveClient googleDriveClient;
+        private readonly GoogleDriveClient googleDriveClient;
         private readonly LocalFileSynchronizer localFileSynchronizer;
         private readonly RemoteFileSynchronizer remoteFileSynchronizer;
         private readonly UserCredential credential;
@@ -36,7 +36,7 @@ namespace MultiDriveSync
 
         public async Task RunAsync(CancellationToken cancellationToken)
         {
-            localFileSynchronizer.StartSynchronization();
+            await localFileSynchronizer.StartSynchronization(Settings, googleDriveClient);
             await remoteFileSynchronizer.RunSynchronization(cancellationToken);
         }
 
