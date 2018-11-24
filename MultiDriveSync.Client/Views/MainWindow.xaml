@@ -42,12 +42,20 @@
         <ListView Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding Sessions}">
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <StackPanel Orientation="Horizontal">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                            <ColumnDefinition Width="*"></ColumnDefinition>
+                            <ColumnDefinition Width="Auto"></ColumnDefinition>
+                        </Grid.ColumnDefinitions>
+
                         <CheckBox Margin="5 5 5 5"></CheckBox>
-                        <TextBlock Text="{Binding UserInfo.Name}" Margin="5 5 5 5"></TextBlock>
-                        <TextBlock Text="{Binding UserInfo.Email}" Margin="5 5 5 5"></TextBlock>
-                        <TextBlock Text="{Binding ClientInfo.ClientName}" Margin="5 5 5 5"></TextBlock>
-                    </StackPanel>
+                        <TextBlock Grid.Column = "0" Text="{Binding UserInfo.Name}" Margin="5 5 5 5"></TextBlock>
+                        <TextBlock Grid.Column = "1" Text="{Binding UserInfo.Email}" Margin="5 5 5 5"></TextBlock>
+                        <TextBlock Grid.Column = "2" Text="{Binding StorageAccountInfo.Name}" Margin="5 5 5 5"></TextBlock>
+                        <Button Grid.Column="3" Click="OnDeleteClick">Delete</Button>
+                    </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
