@@ -58,17 +58,20 @@ namespace MultiDriveSync
 
                 foreach (var change in response.Changes)
                 {
-                    var isFolder = change.File.MimeType == "application/vnd.google-apps.folder";
-
-                    changes.Add(new Change
+                    if (change.File != null)
                     {
-                        Id = change.File.Id,
-                        Name = change.File.Name,
-                        ParentId = change.File.Parents.First(),
-                        LastModifiedDate = change.File.ModifiedTime ?? DateTime.Now,
-                        ChangeContentType = isFolder ? ChangeContentType.Folder : ChangeContentType.File,
-                        ChangeType = change.Removed ?? true ? ChangeType.Deleted : ChangeType.CreatedOrUpdated
-                    });
+                        var isFolder = change.File.MimeType == "application/vnd.google-apps.folder";
+
+                        changes.Add(new Change
+                        {
+                            Id = change.File.Id,
+                            Name = change.File.Name,
+                            ParentId = change.File.Parents.First(),
+                            LastModifiedDate = change.File.ModifiedTime ?? DateTime.Now,
+                            ChangeContentType = isFolder ? ChangeContentType.Folder : ChangeContentType.File,
+                            ChangeType = change.Removed ?? true ? ChangeType.Deleted : ChangeType.CreatedOrUpdated
+                        }); 
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(response.NewStartPageToken))
@@ -105,7 +108,7 @@ namespace MultiDriveSync
             return response.Id;
         }
 
-        public async Task UploadFileAsync(string name, string parentId, Stream stream, string ownerEmail)
+        public async Task<string> UploadFileAsync(string name, string parentId, Stream stream, string ownerEmail)
         {
             var file = new Google.Apis.Drive.v3.Data.File
             {
@@ -114,7 +117,12 @@ namespace MultiDriveSync
                 Properties = new Dictionary<string, string> { [OWNER_KEY] = ownerEmail }
             };
 
-            await driveService.Files.Create(file, stream, "application/octet-stream").UploadAsync();
+            var request = driveService.Files.Create(file, stream, "application/octet-stream");
+            request.Fields = "id";
+            
+            await request.UploadAsync();
+
+            return request.ResponseBody.Id;
         }
 
         public async Task DeleteAsync(string id)

@@ -41,7 +41,7 @@ namespace MultiDriveSync
             watcher.Created += Watcher_Created;
             watcher.Deleted += Watcher_Deleted;
             watcher.Renamed += Watcher_Renamed;
-
+            
             watcher.Path = localRootPath;
             watcher.IncludeSubdirectories = true;
             watcher.EnableRaisingEvents = true;
@@ -55,12 +55,13 @@ namespace MultiDriveSync
                 var (id, ownerEmail) = await googleDriveClient.GetIdAsync(parentId, e.OldName);
                 if (!string.IsNullOrEmpty(id) && ownerEmail == userEmail)
                 {
+                    _service.BlackList.Add(id);
                     await googleDriveClient.RenameAsync(id, e.Name);
                     if (parentIdsByPath.TryGetValue(e.OldFullPath, out var directoryId))
                     {
                         parentIdsByPath[e.FullPath] = directoryId;
                         parentIdsByPath.Remove(e.OldFullPath);
-                    } 
+                    }
                 }
             }
         }
@@ -73,6 +74,7 @@ namespace MultiDriveSync
                 var (id, ownerEmail) = await googleDriveClient.GetIdAsync(parentId, e.Name);
                 if (!string.IsNullOrEmpty(id) && ownerEmail == userEmail)
                 {
+                    _service.BlackList.Add(id);
                     await googleDriveClient.DeleteAsync(id);
                     if (parentIdsByPath.ContainsKey(e.FullPath))
                     {
@@ -91,13 +93,15 @@ namespace MultiDriveSync
                 {
                     using (var stream = File.OpenRead(e.FullPath))
                     {
-                        await googleDriveClient.UploadFileAsync(e.Name, parentId, stream, userEmail);
+                        var id = await googleDriveClient.UploadFileAsync(e.Name, parentId, stream, userEmail);
+                        _service.BlackList.Add(id);
                     }
                 }
                 else if (Directory.Exists(e.FullPath))
                 {
                     var directoryId = await googleDriveClient.UploadFolderAsync(e.Name, parentId, userEmail);
                     parentIdsByPath[e.FullPath] = directoryId;
+                    _service.BlackList.Add(directoryId);
                 }
             }
         }
@@ -112,6 +116,7 @@ namespace MultiDriveSync
                     var (id, ownerEmail) = await googleDriveClient.GetIdAsync(parentId, e.Name);
                     if (!string.IsNullOrEmpty(id) && ownerEmail == userEmail)
                     {
+                        _service.BlackList.Add(id);
                         using (var stream = File.OpenRead(e.FullPath))
                         {
                             await googleDriveClient.UpdateFileAsync(id, stream);

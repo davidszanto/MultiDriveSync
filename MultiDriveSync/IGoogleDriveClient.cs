@@ -14,7 +14,7 @@ namespace MultiDriveSync
         Task<List<Change>> GetChangesAsync();
         Task DownloadFileAsync(string fileId, Stream stream);
         Task<string> UploadFolderAsync(string name, string parentId, string ownerEmail);
-        Task UploadFileAsync(string name, string parentId, Stream stream, string ownerEmail);
+        Task<string> UploadFileAsync(string name, string parentId, Stream stream, string ownerEmail);
         Task DeleteAsync(string id);
         Task RenameAsync(string id, string newName);
         Task UpdateFileAsync(string id, Stream stream);
