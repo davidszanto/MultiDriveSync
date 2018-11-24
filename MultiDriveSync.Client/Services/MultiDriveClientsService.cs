@@ -49,6 +49,19 @@ namespace MultiDriveSync.Client.Services
             }
         }
 
+        public async Task Remove(Session session)
+        {
+            var multiDriveSync = repository.FirstOrDefault(x =>
+                   x.MultiDriveSyncService.Settings.StorageAccountId == session.StorageAccountInfo.UserId
+                && x.MultiDriveSyncService.Settings.UserAccountId == session.UserInfo.UserId);
+
+            if (multiDriveSync != null)
+            {
+                multiDriveSync.CancellationTokenSource.Cancel();
+                await multiDriveSync.MultiDriveSyncService.DeleteStoredDataAsync();
+            }
+        }
+
         class RegisteredMultiDriveSync
         {
             public MultiDriveSyncService MultiDriveSyncService { get; set; }

@@ -31,7 +31,7 @@ namespace MultiDriveSync
             credential = GetStoredCredential(Settings.StorageAccountId, Settings.ClientInfo);
             googleDriveClient = new GoogleDriveClient(credential, Settings.ClientInfo.AppName);
             localFileSynchronizer = new LocalFileSynchronizer();
-            remoteFileSynchronizer = new RemoteFileSynchronizer(googleDriveClient, Settings.LocalRootPath);
+            remoteFileSynchronizer = new RemoteFileSynchronizer(googleDriveClient, Settings.LocalRootPath, Settings.StorageRootPath);
         }
 
         public async Task RunAsync(CancellationToken cancellationToken)
@@ -60,6 +60,11 @@ namespace MultiDriveSync
             var token = dataStore.GetAsync<TokenResponse>(userId).Result;
 
             return new UserCredential(flow, userId, token);
+        }
+
+        public Task DeleteStoredDataAsync()
+        {
+            return googleDriveClient.DeleteStoredTokensAsync();
         }
     }
 }

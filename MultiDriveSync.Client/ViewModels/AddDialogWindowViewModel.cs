@@ -23,6 +23,7 @@ namespace MultiDriveSync.Client.ViewModels
         private EditAccessMode _selectedEditAccessMode;
         private UserInfo _storageAccount;
         private UserInfo _userAccount;
+        private string remoteRootId;
 
         public string LocalRoot { get; set; }
         public string RemoteRoot { get; set; }
@@ -90,10 +91,12 @@ namespace MultiDriveSync.Client.ViewModels
             {
                 var creds = await GetStoredCredentialAsync(_storageAccount.UserId, _appSettings.ClientInfo);
                 var driveClient = new GoogleDriveClient(creds, _appSettings.ClientInfo.AppName);
-                var dialog = new StorageAccountFolderPicker(async (parentId) => await driveClient.GetChildrenFoldersAsync(parentId));
+                var rootId = await driveClient.GetRootIdAsync();
+                var dialog = new StorageAccountFolderPicker(async (parentId) => await driveClient.GetChildrenFoldersAsync(parentId), rootId);
                 dialog.Show();
-                var selectedFolderId = await dialog.GetResult();
-                RemoteRoot = selectedFolderId;
+                var selectedFolder = await dialog.GetResult();
+                RemoteRoot = selectedFolder.Name;
+                remoteRootId = selectedFolder.Id;
 
                 RaisePropertyChanged(nameof(RemoteRoot));
                 SaveSessionCommand.RaiseCanExecuteChanged();
@@ -106,7 +109,7 @@ namespace MultiDriveSync.Client.ViewModels
                     StorageAccountInfo = _storageAccount,
                     UserInfo = _userAccount,
                     LocalRoot = LocalRoot,
-                    RemoteRoot = RemoteRoot,
+                    RemoteRoot = remoteRootId,
                     EditAccessMode = SelectedEditAccessMode
                 };
 

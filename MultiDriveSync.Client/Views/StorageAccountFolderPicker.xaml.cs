@@ -20,18 +20,20 @@ namespace MultiDriveSync.Client.Views
     /// </summary>
     public partial class StorageAccountFolderPicker : Window
     {
-        private readonly TaskCompletionSource<string> tcs;
+        private readonly TaskCompletionSource<Folder> tcs;
         private readonly Func<string, Task<IEnumerable<Folder>>> getChildrenFunc;
+        private readonly string rootId;
 
-        public StorageAccountFolderPicker(Func<string, Task<IEnumerable<Folder>>> getChildrenFunc)
+        public StorageAccountFolderPicker(Func<string, Task<IEnumerable<Folder>>> getChildrenFunc, string rootId)
         {
-            tcs = new TaskCompletionSource<string>();
+            tcs = new TaskCompletionSource<Folder>();
             this.getChildrenFunc = getChildrenFunc;
+            this.rootId = rootId;
 
             InitializeComponent();
         }
 
-        public Task<string> GetResult()
+        public Task<Folder> GetResult()
         {
             return tcs.Task;
         }
@@ -39,13 +41,13 @@ namespace MultiDriveSync.Client.Views
         private void SelectBtn_Click(object sender, RoutedEventArgs e)
         {
             var selectedFolder = (folderTree.SelectedItem as TreeViewItem).Tag as Folder;
-            tcs.SetResult(selectedFolder.Id);
+            tcs.SetResult(selectedFolder);
             Close();
         }
 
         private void CancelBtn_Click(object sender, RoutedEventArgs e)
         {
-            tcs.SetResult(string.Empty);
+            tcs.SetResult(null);
             Close();
         }
 
@@ -55,7 +57,7 @@ namespace MultiDriveSync.Client.Views
 
             var rootFolder = new Folder
             {
-                Id = "root",
+                Id = rootId,
                 Name = "Google Drive"
             };
 

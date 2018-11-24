@@ -1,4 +1,5 @@
 ﻿using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Drive.v3;
 using Google.Apis.Util.Store;
 using MultiDriveSync.Models;
@@ -62,7 +63,7 @@ namespace MultiDriveSync
                     changes.Add(new Change
                     {
                         Id = change.File.Id,
-                        Name = isFolder ? change.File.Name : $"{change.File.Name}.{change.File.FullFileExtension}",
+                        Name = change.File.Name,
                         ParentId = change.File.Parents.First(),
                         LastModifiedDate = change.File.ModifiedTime ?? DateTime.Now,
                         ChangeContentType = isFolder ? ChangeContentType.Folder : ChangeContentType.File,
@@ -112,7 +113,7 @@ namespace MultiDriveSync
                     children.Add(new Change
                     {
                         Id = child.Id,
-                        Name = isFolder ? child.Name : $"{child.Name}.{child.FullFileExtension}",
+                        Name = child.Name,
                         ParentId = child.Parents.First(),
                         LastModifiedDate = child.ModifiedTime ?? DateTime.Now,
                         ChangeContentType = isFolder ? ChangeContentType.Folder : ChangeContentType.File
@@ -147,16 +148,8 @@ namespace MultiDriveSync
             do
             {
                 var request = driveService.Files.List();
-
-                if (string.IsNullOrEmpty(parentId))
-                {
-                    parentId = "root";
-                }
-
                 request.Q = $"mimeType = 'application/vnd.google-apps.folder' and '{parentId}' in parents and trashed = false";
-
                 request.Fields = "nextPageToken, files(id, name, parents)";
-
                 request.PageToken = pageToken;
                 var result = await request.ExecuteAsync();
 
@@ -186,6 +179,12 @@ namespace MultiDriveSync
 
             rootFolder.Children = await GetDescendant(rootFolder);
             return rootFolder;
+        }
+
+        public async Task DeleteStoredTokensAsync()
+        {
+            await dataStore.DeleteAsync<string>(changesTokenKey);
+            await dataStore.DeleteAsync<TokenResponse>(userCredential.UserId);
         }
     }
 }

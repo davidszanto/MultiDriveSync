@@ -10,21 +10,19 @@ namespace MultiDriveSync
     internal class RemoteFileSynchronizer
     {
         private readonly IGoogleDriveClient googleDriveClient;
-        private readonly string localRootPath;
         private readonly Dictionary<string, string> parentPathsById;
+        private readonly string rootId;
 
-        public RemoteFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath)
+        public RemoteFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string rootId)
         {
             this.googleDriveClient = googleDriveClient ?? throw new ArgumentNullException(nameof(googleDriveClient));
-            this.localRootPath = localRootPath ?? throw new ArgumentNullException(nameof(localRootPath));
             parentPathsById = new Dictionary<string, string>();
+            this.rootId = rootId;
+            parentPathsById[rootId] = localRootPath;
         }
 
         public async Task InitializeAsync()
         {
-            var rootId = await googleDriveClient.GetRootIdAsync();
-            parentPathsById[rootId] = localRootPath;
-
             if (!(await googleDriveClient.HasChangesTokenAsync()))
             {
                 await googleDriveClient.InitializeChangesTokenAsync();

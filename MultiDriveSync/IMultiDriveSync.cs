@@ -9,5 +9,6 @@ namespace MultiDriveSync
     interface IMultiDriveSync
     {
         Task RunAsync(CancellationToken cancellationToken);
+        Task DeleteStoredDataAsync();
     }
 }

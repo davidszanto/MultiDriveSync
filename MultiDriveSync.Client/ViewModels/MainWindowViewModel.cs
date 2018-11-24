@@ -54,9 +54,10 @@ namespace MultiDriveSync.Client.ViewModels
             RaisePropertyChanged(nameof(Sessions));
         }
 
-        public void DeleteSession(Session session)
+        public async void DeleteSession(Session session)
         {
             Sessions.Remove(session);
+            await _multiDriveClientsService.Remove(session);
             _appSettings.DeleteSession(session);
         }
     }
