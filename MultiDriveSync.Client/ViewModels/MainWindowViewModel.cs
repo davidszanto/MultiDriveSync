@@ -33,6 +33,9 @@ namespace MultiDriveSync.Client.ViewModels
 
         async Task OnInitializedAsync()
         {
+            var sessions = _appSettings.GetSessions().ToList();
+
+
             //var clientInfo = new ClientInfo
             //{
             //    ClientName = "default",

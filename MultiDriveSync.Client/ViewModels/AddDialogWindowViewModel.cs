@@ -3,7 +3,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
+using Google.Apis.Util.Store;
 using MultiDriveSync.Client.Helpers;
+using MultiDriveSync.Client.Views;
 using MultiDriveSync.Models;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -55,12 +60,15 @@ namespace MultiDriveSync.Client.ViewModels
             {
                 _storageAccount = await SignInHelper.SignInAsync(_appSettings.ClientInfo);
                 RaisePropertyChanged(nameof(StorageAccountEmail));
+                BrowseRemoteRootCommand.RaiseCanExecuteChanged();
+                SaveSessionCommand.RaiseCanExecuteChanged();
             });
 
             UserAccountSignInCommand = new DelegateCommand(async () =>
             {
                 _userAccount = await SignInHelper.SignInAsync(_appSettings.ClientInfo);
                 RaisePropertyChanged(nameof(UserAccountEmail));
+                SaveSessionCommand.RaiseCanExecuteChanged();
             });
 
             BrowseLocalRootCommand = new DelegateCommand(() =>
@@ -73,20 +81,20 @@ namespace MultiDriveSync.Client.ViewModels
                     LocalRoot = dialog.SelectedPath;
 
                 RaisePropertyChanged(nameof(LocalRoot));
+                SaveSessionCommand.RaiseCanExecuteChanged();
             });
 
-            BrowseRemoteRootCommand = new DelegateCommand(() =>
+            BrowseRemoteRootCommand = new DelegateCommand(async () =>
             {
-                var dialog = new FolderBrowserDialog();
-                dialog.RootFolder = Environment.SpecialFolder.MyComputer;
-
-                var result = dialog.ShowDialog();
-                if (result == DialogResult.OK)
-                {
-                    RemoteRoot = dialog.SelectedPath;
-                }
+                var creds = await GetStoredCredentialAsync(_storageAccount.UserId, _appSettings.ClientInfo);
+                var driveClient = new GoogleDriveClient(creds, _appSettings.ClientInfo.AppName);
+                var dialog = new StorageAccountFolderPicker(async (parentId) => await driveClient.GetChildrenFoldersAsync(parentId));
+                dialog.Show();
+                var selectedFolderId = await dialog.GetResult();
+                RemoteRoot = selectedFolderId;
 
                 RaisePropertyChanged(nameof(RemoteRoot));
+                SaveSessionCommand.RaiseCanExecuteChanged();
             }, () => _storageAccount != null);
 
             SaveSessionCommand = new DelegateCommand(() =>
@@ -112,6 +120,28 @@ namespace MultiDriveSync.Client.ViewModels
                 && _userAccount != null
                 && !string.IsNullOrEmpty(RemoteRoot)
                 && !string.IsNullOrEmpty(LocalRoot);
+        }
+
+
+        private async Task<UserCredential> GetStoredCredentialAsync(string userId, ClientInfo clientInfo)
+        {
+            var dataStore = new FileDataStore(clientInfo.AppName);
+
+            var clientSecrets = new ClientSecrets
+            {
+                ClientId = clientInfo.ClientId,
+                ClientSecret = clientInfo.ClientSecret
+            };
+
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = clientSecrets,
+                DataStore = dataStore
+            });
+
+            var token = await dataStore.GetAsync<TokenResponse>(userId);
+
+            return new UserCredential(flow, userId, token);
         }
     }
 }
