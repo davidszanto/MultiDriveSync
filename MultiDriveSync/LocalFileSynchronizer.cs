@@ -9,12 +9,19 @@ namespace MultiDriveSync
 {
     public class LocalFileSynchronizer
     {
+        private readonly MultiDriveSyncService _service;
         private readonly FileSystemWatcher watcher;
         private IGoogleDriveClient client;
 
-        public LocalFileSynchronizer()
+        public LocalFileSynchronizer(MultiDriveSyncService service)
         {
+            _service = service;
             watcher = new FileSystemWatcher();
+        }
+
+        public void ChangeState(bool isEnabled)
+        {
+            watcher.EnableRaisingEvents = enabled;
         }
 
         public async Task StartSynchronization(MultiDriveSyncSettings settings, IGoogleDriveClient driveClient)
