@@ -19,18 +19,32 @@ namespace MultiDriveSync
 
         public async Task StartSynchronization(MultiDriveSyncSettings settings, IGoogleDriveClient driveClient)
         {
-            // TODO: inicializalni a watchert
-
             client = driveClient;
 
-            var folders = await client.GetFoldersFromRoot(settings.StorageRootPath, settings.LocalRootPath);
+            var folders = await client.GetFoldersFromRoot(settings.StorageRootPath, settings.LocalRootPath); //TODO: mi legyen a root mappa neve?
+
+            //TODO: Download data from root
+            //client.DownloadFileAsync()
 
             watcher.Path = settings.LocalRootPath;
             watcher.EnableRaisingEvents = true;
 
             watcher.Changed += (sender, args) =>
             {
-                //TODO: Localwatcher
+                switch (args.ChangeType)
+                {
+                    case WatcherChangeTypes.Changed:
+                        
+                        break;
+                    case WatcherChangeTypes.Created:
+                        break;
+                    case WatcherChangeTypes.Deleted:
+                        break;
+                    case WatcherChangeTypes.Renamed:
+                        break;
+                    default:
+                        break;
+                }
             };
         }
     }

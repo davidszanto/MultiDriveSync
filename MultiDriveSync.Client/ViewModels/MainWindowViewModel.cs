@@ -28,18 +28,36 @@ namespace MultiDriveSync.Client.ViewModels
             {
                 var dialog = new AddDialogWindow();
                 dialog.ShowDialog();
-            });
 
+                UpdateSessions();
+            });
+            
             InitializeViewModelCommand = new DelegateCommand(() => OnInitialized());
             OnClosingCommand = new DelegateCommand(() => _multiDriveClientsService.StopAll());
         }
 
         private void OnInitialized()
         {
+            Sessions = new ObservableCollection<Session>(_appSettings.GetSessions());
+
             foreach (var session in _appSettings.GetSessions())
             {
                 _multiDriveClientsService.Start(session);
             }
+
+            RaisePropertyChanged(nameof(Sessions));
+        }
+
+        private void UpdateSessions()
+        {
+            Sessions = new ObservableCollection<Session>(_appSettings.GetSessions());
+            RaisePropertyChanged(nameof(Sessions));
+        }
+
+        public void DeleteSession(Session session)
+        {
+            Sessions.Remove(session);
+            _appSettings.DeleteSession(session);
         }
     }
 }

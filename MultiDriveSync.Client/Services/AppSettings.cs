@@ -53,6 +53,13 @@ namespace MultiDriveSync.Client.Services
             }
         }
 
+        public void DeleteSession(Session session)
+        {
+            var sessionString = JsonConvert.SerializeObject(session);
+            Settings.Default.Sessions.Remove(sessionString);
+            Settings.Default.Save();
+        }
+
         public IEnumerable<string> GetUserEmails()
         {
             return GetSessions().Select(x => x.UserInfo.Email);

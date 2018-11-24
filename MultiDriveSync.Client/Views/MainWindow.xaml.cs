@@ -27,5 +27,11 @@ namespace MultiDriveSync.Client.Views
         {
             InitializeComponent();
         }
+
+        private void OnDeleteClick(object sender, RoutedEventArgs e)
+        {
+            var session = (sender as Button).DataContext as Session;
+            (DataContext as MainWindowViewModel).DeleteSession(session);
+        }
     }
 }
