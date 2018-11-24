@@ -87,7 +87,9 @@ namespace MultiDriveSync
 
                 try
                 {
+                    _service.ChangeLocalWatcherState(true);
                     await Task.Delay(TimeSpan.FromMinutes(15), cancellationToken);
+                    _service.ChangeLocalWatcherState(false);
                 }
                 catch (TaskCanceledException) { }
             }
