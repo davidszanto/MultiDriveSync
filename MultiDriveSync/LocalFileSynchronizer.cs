@@ -5,19 +5,26 @@ namespace MultiDriveSync
 {
     public class LocalFileSynchronizer
     {
+        private readonly MultiDriveSyncService _service;
         private readonly FileSystemWatcher watcher;
         private readonly IGoogleDriveClient googleDriveClient;
         private readonly string localRootPath;
         private readonly string userEmail;
         private readonly Dictionary<string, string> parentIdsByPath;
 
-        public LocalFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string userEmail)
+        public LocalFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string userEmail, MultiDriveSyncService service)
         {
+            _service = service;
             watcher = new FileSystemWatcher();
             this.googleDriveClient = googleDriveClient;
             this.localRootPath = localRootPath;
             parentIdsByPath = new Dictionary<string, string>();
             this.userEmail = userEmail;
+        }
+
+        public void ChangeState(bool isEnabled)
+        {
+            watcher.EnableRaisingEvents = isEnabled;
         }
 
         public void InitializeParentIdsAndPaths(Dictionary<string, string> parentPathsById)

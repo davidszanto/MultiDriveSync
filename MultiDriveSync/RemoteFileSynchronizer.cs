@@ -11,14 +11,16 @@ namespace MultiDriveSync
     {
         private readonly IGoogleDriveClient googleDriveClient;
         private readonly string rootId;
+        private readonly MultiDriveSyncService _service;
 
         public Dictionary<string, string> ParentPathsById { get; }
 
-        public RemoteFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string rootId)
+        public RemoteFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string rootId, MultiDriveSyncService service)
         {
             this.googleDriveClient = googleDriveClient ?? throw new ArgumentNullException(nameof(googleDriveClient));
             ParentPathsById = new Dictionary<string, string>();
             this.rootId = rootId;
+            _service = service;
             ParentPathsById[rootId] = localRootPath;
         }
 
@@ -44,18 +46,38 @@ namespace MultiDriveSync
                     switch (change.ChangeContentType)
                     {
                         case ChangeContentType.Folder when change.ChangeType == ChangeType.CreatedOrUpdated:
+                            if (_service.BlackList.Contains(change.Id))
+                            {
+                                _service.BlackList.Remove(change.Id);
+                                continue;
+                            }
                             CreateOrUpdateFolder(change.ParentId, change.Id, change.Name);
                             break;
 
                         case ChangeContentType.Folder when change.ChangeType == ChangeType.Deleted:
+                            if (_service.BlackList.Contains(change.Id))
+                            {
+                                _service.BlackList.Remove(change.Id);
+                                continue;
+                            }
                             DeleteFolder(change.Id);
                             break;
 
                         case ChangeContentType.File when change.ChangeType == ChangeType.CreatedOrUpdated:
+                            if (_service.BlackList.Contains(change.Id))
+                            {
+                                _service.BlackList.Remove(change.Id);
+                                continue;
+                            }
                             await CreateOrUpdateFile(change.ParentId, change.Id, change.Name);
                             break;
 
                         case ChangeContentType.File when change.ChangeType == ChangeType.Deleted:
+                            if (_service.BlackList.Contains(change.Id))
+                            {
+                                _service.BlackList.Remove(change.Id);
+                                continue;
+                            }
                             DeleteFile(change.ParentId, change.Name);
                             break;
 
@@ -66,7 +88,9 @@ namespace MultiDriveSync
 
                 try
                 {
+                    _service.ChangeLocalWatcherState(true);
                     await Task.Delay(TimeSpan.FromMinutes(15), cancellationToken);
+                    _service.ChangeLocalWatcherState(false);
                 }
                 catch (TaskCanceledException) { }
             }

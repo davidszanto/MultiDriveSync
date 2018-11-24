@@ -6,6 +6,7 @@ using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using MultiDriveSync.Models;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,6 +22,9 @@ namespace MultiDriveSync
         private readonly RemoteFileSynchronizer remoteFileSynchronizer;
         private readonly UserCredential credential;
 
+        //BlackList of File/Folder-Ids which dont need synchronizing
+        public List<string> BlackList = new List<string>();
+
         public MultiDriveSyncSettings Settings { get; }
 
         public MultiDriveSyncService(Action<MultiDriveSyncSettings> configure)
@@ -30,8 +34,8 @@ namespace MultiDriveSync
 
             credential = GetStoredCredential(Settings.StorageAccountId, Settings.ClientInfo);
             googleDriveClient = new GoogleDriveClient(credential, Settings.ClientInfo.AppName);
-            localFileSynchronizer = new LocalFileSynchronizer(googleDriveClient, Settings.LocalRootPath, Settings.UserEmail);
-            remoteFileSynchronizer = new RemoteFileSynchronizer(googleDriveClient, Settings.LocalRootPath, Settings.StorageRootPath);
+            localFileSynchronizer = new LocalFileSynchronizer(googleDriveClient, Settings.LocalRootPath, Settings.UserEmail, this);
+            remoteFileSynchronizer = new RemoteFileSynchronizer(googleDriveClient, Settings.LocalRootPath, Settings.StorageRootPath, this);
         }
 
         public async Task RunAsync(CancellationToken cancellationToken)
@@ -43,6 +47,8 @@ namespace MultiDriveSync
 
             await remoteFileSynchronizer.RunSynchronization(cancellationToken);
         }
+
+        public void ChangeLocalWatcherState(bool isEnabled) => localFileSynchronizer.ChangeState(isEnabled);
 
         private UserCredential GetStoredCredential(string userId, ClientInfo clientInfo)
         {
