@@ -60,6 +60,8 @@ namespace MultiDriveSync.Client.Services
                 multiDriveSync.CancellationTokenSource.Cancel();
                 await multiDriveSync.MultiDriveSyncService.DeleteStoredDataAsync();
             }
+
+            repository.Remove(multiDriveSync);
         }
 
         class RegisteredMultiDriveSync
