@@ -59,7 +59,7 @@ namespace MultiDriveSync.Client.Services
             Settings.Default.Sessions.Remove(sessionString);
             Settings.Default.Save();
         }
-
+        
         public IEnumerable<string> GetUserEmails()
         {
             return GetSessions().Select(x => x.UserInfo.Email);

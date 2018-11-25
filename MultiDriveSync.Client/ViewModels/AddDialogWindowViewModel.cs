@@ -127,25 +127,33 @@ namespace MultiDriveSync.Client.ViewModels
 
         private bool ValidateInputs()
         {
-            var emptyDirectory = true;
-            if (!string.IsNullOrEmpty(LocalRoot) && !Directory.GetFileSystemEntries(LocalRoot).Any())
+            if (!string.IsNullOrEmpty(LocalRoot) && Directory.GetFileSystemEntries(LocalRoot).Any())
             {
-                emptyDirectory = false;
+                ShowDialogBox("Your selected folder is not empty. Please select an empty folder!");
+                return false;
+            }
 
-                string messageBoxText = "Your selected folder is not empty. Please select an empty folder!";
-                string caption = "Warning";
-                MessageBoxButton button = MessageBoxButton.OK;
-                MessageBoxImage icon = MessageBoxImage.Warning;
-                MessageBox.Show(messageBoxText, caption, button, icon);
+            if (!string.IsNullOrEmpty(LocalRoot)
+                && _appSettings.GetSessions().Select(x => x.LocalRoot).Contains(LocalRoot))
+            {
+                ShowDialogBox("Your selected folder is already registered for a Drive. Please select another folder!");
+                return false;
             }
 
             return _storageAccount != null
-                && _userAccount != null
-                && !string.IsNullOrEmpty(RemoteRoot)
-                && !string.IsNullOrEmpty(LocalRoot)
-                && emptyDirectory;
+                   && _userAccount != null
+                   && !string.IsNullOrEmpty(RemoteRoot)
+                   && !string.IsNullOrEmpty(LocalRoot);
         }
 
+        private void ShowDialogBox(string message)
+        {
+            string messageBoxText = message;
+            string caption = "Warning";
+            MessageBoxButton button = MessageBoxButton.OK;
+            MessageBoxImage icon = MessageBoxImage.Warning;
+            MessageBox.Show(messageBoxText, caption, button, icon);
+        }
 
         private async Task<UserCredential> GetStoredCredentialAsync(string userId, ClientInfo clientInfo)
         {
