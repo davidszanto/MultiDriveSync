@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using MultiDriveSync.Models;
+using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace MultiDriveSync
@@ -8,18 +10,16 @@ namespace MultiDriveSync
         private readonly MultiDriveSyncService _service;
         private readonly FileSystemWatcher watcher;
         private readonly IGoogleDriveClient googleDriveClient;
-        private readonly string localRootPath;
-        private readonly string userEmail;
         private readonly Dictionary<string, string> parentIdsByPath;
+        private readonly Debouncer<FileSystemEventArgs> eventDebouncer;
 
-        public LocalFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string userEmail, MultiDriveSyncService service)
+        public LocalFileSynchronizer(IGoogleDriveClient googleDriveClient, MultiDriveSyncService service)
         {
             _service = service;
             watcher = new FileSystemWatcher();
             this.googleDriveClient = googleDriveClient;
-            this.localRootPath = localRootPath;
             parentIdsByPath = new Dictionary<string, string>();
-            this.userEmail = userEmail;
+            eventDebouncer = new Debouncer<FileSystemEventArgs>(DebouncedEventHandler);
         }
 
         public void ChangeState(bool isEnabled)
@@ -42,7 +42,7 @@ namespace MultiDriveSync
             watcher.Deleted += Watcher_Deleted;
             watcher.Renamed += Watcher_Renamed;
             
-            watcher.Path = localRootPath;
+            watcher.Path = _service.Settings.LocalRootPath;
             watcher.IncludeSubdirectories = true;
             watcher.EnableRaisingEvents = true;
         }
@@ -53,9 +53,9 @@ namespace MultiDriveSync
             if (parentIdsByPath.TryGetValue(parentPath, out var parentId))
             {
                 var (id, ownerEmail) = await googleDriveClient.GetIdAsync(parentId, e.OldName);
-                if (!string.IsNullOrEmpty(id) && ownerEmail == userEmail)
+                if (!string.IsNullOrEmpty(id) && CanExecuteOperation(ownerEmail))
                 {
-                    _service.BlackList.Add(id);
+                    _service.BlackList.TryAdd(e.OldFullPath, null);
                     await googleDriveClient.RenameAsync(id, e.Name);
                     if (parentIdsByPath.TryGetValue(e.OldFullPath, out var directoryId))
                     {
@@ -72,9 +72,9 @@ namespace MultiDriveSync
             if (parentIdsByPath.TryGetValue(parentPath, out var parentId))
             {
                 var (id, ownerEmail) = await googleDriveClient.GetIdAsync(parentId, e.Name);
-                if (!string.IsNullOrEmpty(id) && ownerEmail == userEmail)
+                if (!string.IsNullOrEmpty(id) && CanExecuteOperation(ownerEmail))
                 {
-                    _service.BlackList.Add(id);
+                    _service.BlackList.TryAdd(e.FullPath, null);
                     await googleDriveClient.DeleteAsync(id);
                     if (parentIdsByPath.ContainsKey(e.FullPath))
                     {
@@ -84,7 +84,35 @@ namespace MultiDriveSync
             }
         }
 
-        private async void Watcher_Created(object sender, FileSystemEventArgs e)
+        private void Watcher_Created(object sender, FileSystemEventArgs e)
+        {
+            eventDebouncer.Debounce(e.FullPath, e);
+        }
+
+        private void Watcher_Changed(object sender, FileSystemEventArgs e)
+        {
+            eventDebouncer.Debounce(e.FullPath, e);
+        }
+
+        private void DebouncedEventHandler(FileSystemEventArgs e)
+        {
+            switch (e.ChangeType)
+            {
+                case WatcherChangeTypes.Created:
+                    Created(e);
+                    break;
+                case WatcherChangeTypes.Changed:
+                    Changed(e);
+                    break;
+                case WatcherChangeTypes.All:
+                case WatcherChangeTypes.Deleted:
+                case WatcherChangeTypes.Renamed:
+                default:
+                    throw new InvalidOperationException(e.ChangeType.ToString());
+            }
+        }
+
+        private async void Created(FileSystemEventArgs e)
         {
             var parentPath = Directory.GetParent(e.FullPath).FullName;
             if (parentIdsByPath.TryGetValue(parentPath, out var parentId))
@@ -93,20 +121,20 @@ namespace MultiDriveSync
                 {
                     using (var stream = File.OpenRead(e.FullPath))
                     {
-                        var id = await googleDriveClient.UploadFileAsync(e.Name, parentId, stream, userEmail);
-                        _service.BlackList.Add(id);
+                        _service.BlackList.TryAdd(e.FullPath, null);
+                        var id = await googleDriveClient.UploadFileAsync(e.Name, parentId, stream, _service.Settings.UserEmail);
                     }
                 }
                 else if (Directory.Exists(e.FullPath))
                 {
-                    var directoryId = await googleDriveClient.UploadFolderAsync(e.Name, parentId, userEmail);
+                    _service.BlackList.TryAdd(e.FullPath, null);
+                    var directoryId = await googleDriveClient.UploadFolderAsync(e.Name, parentId, _service.Settings.UserEmail);
                     parentIdsByPath[e.FullPath] = directoryId;
-                    _service.BlackList.Add(directoryId);
                 }
             }
         }
 
-        private async void Watcher_Changed(object sender, FileSystemEventArgs e)
+        private async void Changed(FileSystemEventArgs e)
         {
             if (e.ChangeType == WatcherChangeTypes.Changed)
             {
@@ -114,15 +142,25 @@ namespace MultiDriveSync
                 if (parentIdsByPath.TryGetValue(parentPath, out var parentId))
                 {
                     var (id, ownerEmail) = await googleDriveClient.GetIdAsync(parentId, e.Name);
-                    if (!string.IsNullOrEmpty(id) && ownerEmail == userEmail)
+                    if (!string.IsNullOrEmpty(id) && CanExecuteOperation(ownerEmail))
                     {
-                        _service.BlackList.Add(id);
+                        _service.BlackList.TryAdd(e.FullPath, null);
                         using (var stream = File.OpenRead(e.FullPath))
                         {
                             await googleDriveClient.UpdateFileAsync(id, stream);
-                        } 
+                        }
                     }
                 }
+            }
+        }
+
+        private bool CanExecuteOperation(string ownerEmail)
+        {
+            switch (_service.Settings.EditAccessMode)
+            {
+                case EditAccessMode.OwnedOnly: return ownerEmail == _service.Settings.UserEmail;
+                case EditAccessMode.All: return true;
+                default: throw new ArgumentException(nameof(EditAccessMode));
             }
         }
     }

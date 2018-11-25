@@ -24,7 +24,7 @@ namespace MultiDriveSync.Client.Services
             {
                 settings.StorageAccountId = session.StorageAccountInfo.UserId;
                 settings.UserEmail = session.UserInfo.Email;
-                settings.StorageRootPath = session.RemoteRoot;
+                settings.StorageRootId = session.RemoteRoot;
                 settings.LocalRootPath = session.LocalRoot;
                 settings.EditAccessMode = session.EditAccessMode;
                 settings.ClientInfo = appSettings.ClientInfo;

@@ -10,18 +10,16 @@ namespace MultiDriveSync
     internal class RemoteFileSynchronizer
     {
         private readonly IGoogleDriveClient googleDriveClient;
-        private readonly string rootId;
         private readonly MultiDriveSyncService _service;
 
-        public Dictionary<string, string> ParentPathsById { get; }
+        public Dictionary<string, string> FolderPathsById { get; }
 
-        public RemoteFileSynchronizer(IGoogleDriveClient googleDriveClient, string localRootPath, string rootId, MultiDriveSyncService service)
+        public RemoteFileSynchronizer(IGoogleDriveClient googleDriveClient, MultiDriveSyncService service)
         {
             this.googleDriveClient = googleDriveClient ?? throw new ArgumentNullException(nameof(googleDriveClient));
-            ParentPathsById = new Dictionary<string, string>();
-            this.rootId = rootId;
+            FolderPathsById = new Dictionary<string, string>();
             _service = service;
-            ParentPathsById[rootId] = localRootPath;
+            FolderPathsById[_service.Settings.StorageRootId] = _service.Settings.LocalRootPath;
         }
 
         public async Task InitializeAsync()
@@ -30,12 +28,12 @@ namespace MultiDriveSync
             {
                 _service.ChangeLocalWatcherState(false);
                 await googleDriveClient.InitializeChangesTokenAsync();
-                await DownloadAllFilesAsync(rootId);
+                await DownloadAllFilesAsync();
                 _service.ChangeLocalWatcherState(true);
             }
             else
             {
-                await InitializeParentPathsByIdDictionaryAsync(rootId);
+                await InitializeParentPathsByIdDictionaryAsync();
             }
         }
 
@@ -48,38 +46,18 @@ namespace MultiDriveSync
                     switch (change.ChangeContentType)
                     {
                         case ChangeContentType.Folder when change.ChangeType == ChangeType.CreatedOrUpdated:
-                            if (_service.BlackList.Contains(change.Id))
-                            {
-                                _service.BlackList.Remove(change.Id);
-                                continue;
-                            }
                             CreateOrUpdateFolder(change.ParentId, change.Id, change.Name);
                             break;
 
                         case ChangeContentType.Folder when change.ChangeType == ChangeType.Deleted:
-                            if (_service.BlackList.Contains(change.Id))
-                            {
-                                _service.BlackList.Remove(change.Id);
-                                continue;
-                            }
                             DeleteFolder(change.Id);
                             break;
 
                         case ChangeContentType.File when change.ChangeType == ChangeType.CreatedOrUpdated:
-                            if (_service.BlackList.Contains(change.Id))
-                            {
-                                _service.BlackList.Remove(change.Id);
-                                continue;
-                            }
                             await CreateOrUpdateFile(change.ParentId, change.Id, change.Name);
                             break;
 
                         case ChangeContentType.File when change.ChangeType == ChangeType.Deleted:
-                            if (_service.BlackList.Contains(change.Id))
-                            {
-                                _service.BlackList.Remove(change.Id);
-                                continue;
-                            }
                             DeleteFile(change.ParentId, change.Name);
                             break;
 
@@ -98,10 +76,10 @@ namespace MultiDriveSync
             }
         }
 
-        private async Task DownloadAllFilesAsync(string rootId)
+        private async Task DownloadAllFilesAsync()
         {
             var parentIdQueue = new Queue<string>();
-            parentIdQueue.Enqueue(rootId);
+            parentIdQueue.Enqueue(_service.Settings.StorageRootId);
 
             while (parentIdQueue.Count > 0)
             {
@@ -125,10 +103,10 @@ namespace MultiDriveSync
             }
         }
 
-        private async Task InitializeParentPathsByIdDictionaryAsync(string rootId)
+        private async Task InitializeParentPathsByIdDictionaryAsync()
         {
             var parentIdQueue = new Queue<string>();
-            parentIdQueue.Enqueue(rootId);
+            parentIdQueue.Enqueue(_service.Settings.StorageRootId);
 
             while (parentIdQueue.Count > 0)
             {
@@ -136,8 +114,8 @@ namespace MultiDriveSync
 
                 foreach (var child in await googleDriveClient.GetChildrenFoldersAsync(parentId))
                 {
-                    var fullPath = Path.Combine(ParentPathsById[parentId], child.Name);
-                    ParentPathsById[child.Id] = fullPath;
+                    var fullPath = Path.Combine(FolderPathsById[parentId], child.Name);
+                    FolderPathsById[child.Id] = fullPath;
                     parentIdQueue.Enqueue(child.Id);
                 }
             }
@@ -145,18 +123,31 @@ namespace MultiDriveSync
 
         private void DeleteFolder(string folderId)
         {
-            if (ParentPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
+            if (FolderPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
             {
+                if (_service.BlackList.ContainsKey(path))
+                {
+                    _service.BlackList.TryRemove(path, out var _);
+                    return;
+                }
+
                 Directory.Delete(path, true);
-                ParentPathsById.Remove(folderId);
+                FolderPathsById.Remove(folderId);
             }
         }
 
         private void DeleteFile(string parentFolderId, string fileName)
         {
-            if (ParentPathsById.TryGetValue(parentFolderId, out var parentFolderPath) && Directory.Exists(parentFolderId))
+            if (FolderPathsById.TryGetValue(parentFolderId, out var parentFolderPath) && Directory.Exists(parentFolderId))
             {
                 var filePathToDelete = Path.Combine(parentFolderPath, fileName);
+
+                if (_service.BlackList.ContainsKey(filePathToDelete))
+                {
+                    _service.BlackList.TryRemove(filePathToDelete, out var _);
+                    return;
+                }
+
                 if (File.Exists(filePathToDelete))
                 {
                     File.Delete(filePathToDelete);
@@ -166,30 +157,47 @@ namespace MultiDriveSync
 
         private void CreateOrUpdateFolder(string parentId, string folderId, string folderName)
         {
-            if (ParentPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
+            if (FolderPathsById.TryGetValue(folderId, out var path) && Directory.Exists(path))
             {
+                if (_service.BlackList.ContainsKey(path))
+                {
+                    _service.BlackList.TryRemove(path, out var _);
+                    return;
+                }
+
                 var directory = new DirectoryInfo(path);
                 var newPath = Path.Combine(directory.Parent.FullName, folderName);
 
                 Directory.Move(path, newPath);
-                ParentPathsById[folderId] = newPath;
+                FolderPathsById[folderId] = newPath;
             }
-            else
+            else if (FolderPathsById.TryGetValue(parentId, out var parentPath) && Directory.Exists(parentPath))
             {
-                if (ParentPathsById.TryGetValue(parentId, out var parentPath) && Directory.Exists(parentPath))
+                var newDirectoryPath = Path.Combine(parentPath, folderName);
+
+                if (_service.BlackList.ContainsKey(newDirectoryPath))
                 {
-                    var newDirectoryPath = Path.Combine(parentPath, folderName);
-                    Directory.CreateDirectory(newDirectoryPath);
-                    ParentPathsById[folderId] = newDirectoryPath;
+                    _service.BlackList.TryRemove(newDirectoryPath, out var _);
+                    return;
                 }
+
+                Directory.CreateDirectory(newDirectoryPath);
+                FolderPathsById[folderId] = newDirectoryPath;
             }
         }
 
         private async Task CreateOrUpdateFile(string parentId, string fileId, string fileName)
         {
-            if (ParentPathsById.TryGetValue(parentId, out var parentFolderPath) && Directory.Exists(parentFolderPath))
+            if (FolderPathsById.TryGetValue(parentId, out var parentFolderPath) && Directory.Exists(parentFolderPath))
             {
                 var filePath = Path.Combine(parentFolderPath, fileName);
+
+                if (_service.BlackList.ContainsKey(filePath))
+                {
+                    _service.BlackList.TryRemove(filePath, out var _);
+                    return;
+                }
+
                 using (var stream = File.Create(filePath))
                 {
                     await googleDriveClient.DownloadFileAsync(fileId, stream);
