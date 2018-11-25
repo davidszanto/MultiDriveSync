@@ -28,8 +28,10 @@ namespace MultiDriveSync
         {
             if (!(await googleDriveClient.HasChangesTokenAsync()))
             {
+                _service.ChangeLocalWatcherState(false);
                 await googleDriveClient.InitializeChangesTokenAsync();
                 await DownloadAllFilesAsync(rootId);
+                _service.ChangeLocalWatcherState(true);
             }
             else
             {

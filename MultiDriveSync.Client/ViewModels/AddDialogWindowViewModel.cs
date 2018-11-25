@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
@@ -13,6 +15,7 @@ using MultiDriveSync.Models;
 using Prism.Commands;
 using Prism.Mvvm;
 using Application = System.Windows.Application;
+using MessageBox = System.Windows.MessageBox;
 
 namespace MultiDriveSync.Client.ViewModels
 {
@@ -124,10 +127,23 @@ namespace MultiDriveSync.Client.ViewModels
 
         private bool ValidateInputs()
         {
+            var emptyDirectory = true;
+            if (!string.IsNullOrEmpty(LocalRoot) && !Directory.GetFileSystemEntries(LocalRoot).Any())
+            {
+                emptyDirectory = false;
+
+                string messageBoxText = "Your selected folder is not empty. Please select an empty folder!";
+                string caption = "Warning";
+                MessageBoxButton button = MessageBoxButton.OK;
+                MessageBoxImage icon = MessageBoxImage.Warning;
+                MessageBox.Show(messageBoxText, caption, button, icon);
+            }
+
             return _storageAccount != null
                 && _userAccount != null
                 && !string.IsNullOrEmpty(RemoteRoot)
-                && !string.IsNullOrEmpty(LocalRoot);
+                && !string.IsNullOrEmpty(LocalRoot)
+                && emptyDirectory;
         }
 
 
